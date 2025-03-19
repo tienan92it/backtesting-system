@@ -11,6 +11,20 @@ class DataHandler(ABC):
     """
 
     @abstractmethod
+    def initialize(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> None:
+        """
+        Initialize the data handler with date range constraints.
+        
+        Parameters:
+        -----------
+        start_date : datetime, optional
+            The start date to filter data.
+        end_date : datetime, optional
+            The end date to filter data.
+        """
+        pass
+
+    @abstractmethod
     def get_historical_data(
         self,
         symbol: str,

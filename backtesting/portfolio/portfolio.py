@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Any, Tuple
 import pandas as pd
 from datetime import datetime
 
-from backtesting.engine.event import FillEvent, OrderEvent
+from backtesting.engine.event import FillEvent, OrderEvent, PortfolioEvent
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class Portfolio:
         # Current positions for each symbol (quantity)
         self.positions = {symbol: 0.0 for symbol in self.symbols}
         
-        # Current position values for each symbol
+        # Current position values for each symbol (price * quantity)
         self.position_values = {symbol: 0.0 for symbol in self.symbols}
         
         # Current prices for each symbol
@@ -69,7 +69,40 @@ class Portfolio:
         self.total_slippage = 0.0
         self.trade_count = 0
         
-        logger.info(f"Portfolio initialized with ${initial_capital:.2f}")
+        # Historical positions and portfolio values
+        self.history = []
+        
+        # References
+        self.data_handler = None
+        
+        logger.info(f"Portfolio initialized with capital: ${self.initial_capital:,.2f} and {len(self.symbols)} symbols")
+    
+    def initialize(self, initial_capital: float = None, data_handler = None) -> None:
+        """
+        Initialize the portfolio with initial capital and data handler.
+        
+        Parameters:
+        -----------
+        initial_capital : float, optional
+            The initial capital in the base currency (e.g., USD, USDT)
+        data_handler : DataHandler, optional
+            The data handler to use for data access
+        """
+        if initial_capital is not None:
+            self.initial_capital = initial_capital
+            self.current_capital = initial_capital
+        
+        if data_handler is not None:
+            self.data_handler = data_handler
+            # Update symbols from data handler if available
+            if hasattr(data_handler, 'symbols') and data_handler.symbols:
+                for symbol in data_handler.symbols:
+                    if symbol not in self.symbols:
+                        self.symbols.append(symbol)
+                        self.positions[symbol] = 0.0
+                        self.position_values[symbol] = 0.0
+        
+        logger.info(f"Portfolio initialized with capital: ${self.initial_capital:,.2f} and {len(self.symbols)} symbols")
     
     def update_fill(self, fill_event: FillEvent) -> None:
         """
@@ -245,6 +278,92 @@ class Portfolio:
         # For now, this is a placeholder that would be customized based on the strategy signals
         pass
     
+    def on_signal(self, signal_event):
+        """
+        Handle a signal event from a strategy.
+        
+        Parameters:
+        -----------
+        signal_event : SignalEvent
+            The signal event from a strategy
+        
+        Returns:
+        --------
+        OrderEvent or None
+            An order event if signal can be acted upon, or None
+        """
+        # Extract details from the signal
+        symbol = signal_event.symbol
+        signal_type = signal_event.signal_type
+        timestamp = signal_event.timestamp
+        price = signal_event.metadata.get('price', None)
+        
+        # Debug log the received signal
+        logger.info(f"Received signal: {signal_type} for {symbol} at {timestamp}")
+        
+        # Convert signal to order
+        if signal_type == 'BUY':
+            # Calculate position size based on available capital
+            if price is None and self.data_handler and symbol in self.data_handler.current_bar:
+                price = self.data_handler.current_bar[symbol].get('close', None)
+            
+            if price is None:
+                logger.warning(f"Cannot create BUY order - no price available for {symbol}")
+                return None
+            
+            # Determine quantity (here we use 90% of available capital as an example)
+            allocation = self.current_capital * 0.9  # Use 90% of available capital
+            quantity = allocation / price
+            
+            if quantity <= 0:
+                logger.warning(f"Cannot create BUY order - insufficient capital (${self.current_capital:.2f})")
+                return None
+            
+            # Create a market buy order
+            order = OrderEvent(
+                timestamp=timestamp,
+                symbol=symbol,
+                order_type='MARKET',
+                quantity=quantity,
+                direction='BUY',
+                price=price
+            )
+            logger.info(f"Created BUY order for {quantity:.4f} {symbol} at ${price:.2f}")
+            return order
+        
+        elif signal_type == 'SELL':
+            # Check if we have a position to sell
+            if symbol not in self.positions or self.positions[symbol] <= 0:
+                logger.warning(f"Cannot create SELL order - no position in {symbol}")
+                return None
+            
+            # Get the current price if not provided
+            if price is None and self.data_handler and symbol in self.data_handler.current_bar:
+                price = self.data_handler.current_bar[symbol].get('close', None)
+            
+            if price is None:
+                logger.warning(f"Cannot create SELL order - no price available for {symbol}")
+                return None
+            
+            # Sell the entire position
+            quantity = self.positions[symbol]
+            
+            # Create a market sell order
+            order = OrderEvent(
+                timestamp=timestamp,
+                symbol=symbol,
+                order_type='MARKET',
+                quantity=quantity,
+                direction='SELL',
+                price=price
+            )
+            logger.info(f"Created SELL order for {quantity:.4f} {symbol} at ${price:.2f}")
+            return order
+        
+        else:
+            logger.warning(f"Unknown signal type: {signal_type}")
+            return None
+    
     def get_equity_curve(self) -> pd.DataFrame:
         """
         Get the equity curve as a pandas DataFrame.
@@ -358,3 +477,52 @@ class Portfolio:
             'total_slippage': self.total_slippage,
             'trade_count': self.trade_count
         }
+
+    def on_fill(self, fill_event: FillEvent) -> Optional['PortfolioEvent']:
+        """
+        Updates the portfolio on a fill event.
+        
+        Parameters:
+        -----------
+        fill_event : FillEvent
+            The fill event
+            
+        Returns:
+        --------
+        PortfolioEvent or None
+            A portfolio event if the fill was processed successfully
+        """
+        # Update the portfolio with the fill
+        self.update_fill(fill_event)
+        
+        # Update portfolio value with latest fill price
+        symbol = fill_event.symbol
+        timestamp = fill_event.timestamp
+        fill_price = fill_event.fill_price
+        
+        # Update current prices for this symbol
+        if symbol in self.positions:
+            self.current_prices[symbol] = fill_price
+            self.position_values[symbol] = self.positions[symbol] * fill_price
+        
+        # Calculate total portfolio value
+        total_position_value = sum(self.position_values.values())
+        self.portfolio_value = self.current_capital + total_position_value
+        
+        # Record in equity curve
+        self.equity_curve.append({
+            'timestamp': timestamp,
+            'portfolio_value': self.portfolio_value,
+            'cash': self.current_capital,
+            'positions_value': total_position_value
+        })
+        
+        # Create portfolio event
+        portfolio_event = PortfolioEvent(
+            timestamp=timestamp, 
+            cash=self.current_capital,
+            positions=self.positions.copy(),
+            portfolio_value=self.portfolio_value
+        )
+        
+        return portfolio_event

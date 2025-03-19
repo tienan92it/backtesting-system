@@ -37,6 +37,36 @@ class Strategy(ABC):
         
         # User-defined parameters
         self.params = {}
+        
+        # References
+        self.data_handler = None
+        self.portfolio = None
+        self.events_queue = None
+        self.symbols = []
+    
+    def initialize(self, data_handler=None, portfolio=None, event_loop=None):
+        """
+        Initialize the strategy with data handler, portfolio, and event loop.
+        
+        Parameters:
+        -----------
+        data_handler : DataHandler, optional
+            The data handler to use for data access
+        portfolio : Portfolio, optional
+            The portfolio to use for position tracking
+        event_loop : EventLoop, optional
+            The event loop for event dispatching
+        """
+        self.data_handler = data_handler
+        self.portfolio = portfolio
+        self.events_queue = event_loop
+        
+        # Update symbols from data handler if available
+        if data_handler is not None and hasattr(data_handler, 'symbols'):
+            self.symbols = data_handler.symbols
+            
+        # Call the abstract init method to initialize strategy-specific items
+        self.init()
     
     def set_data(self, data: pd.DataFrame) -> None:
         """
@@ -176,9 +206,8 @@ class Strategy(ABC):
     @abstractmethod
     def next(self) -> None:
         """
-        Process the next candle.
-        This is called for each new candle during backtesting.
-        It's where trading decisions should be made.
+        Process the next bar.
+        This is called for each bar by the backtester.
         """
         pass
     
@@ -307,6 +336,19 @@ class Strategy(ABC):
         
         # Check for crossunder
         return s1_prev >= s2_prev and s1_curr < s2_curr
+    
+    def on_data(self, event):
+        """
+        Process new market data and generate signals.
+        
+        Parameters:
+        -----------
+        event : MarketEvent
+            The market event with new data
+        """
+        # Default implementation just calls next()
+        # Subclasses can override this for more control
+        self.next()
 
 
 class StrategyBase(Strategy):

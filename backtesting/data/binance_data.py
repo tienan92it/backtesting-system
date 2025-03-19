@@ -286,3 +286,53 @@ class BinanceDataHandler(DataHandler):
                 all_bars[timestamp][symbol] = row.to_dict()
         
         return all_bars
+    
+    def save_data(self, df: pd.DataFrame, symbol: str, timeframe: str, directory: str = None) -> None:
+        """
+        Save data to cache.
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            DataFrame with OHLCV data.
+        symbol : str
+            Trading symbol (e.g., 'BTCUSDT').
+        timeframe : str
+            Candle interval (e.g., '1h', '1d').
+        directory : str, optional
+            Directory to save data to.
+        """
+        # Implement your cache saving logic here
+        pass
+    
+    def initialize(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> None:
+        """
+        Initialize the data handler with date range constraints.
+        
+        Parameters:
+        -----------
+        start_date : datetime, optional
+            The start date to filter data.
+        end_date : datetime, optional
+            The end date to filter data.
+        """
+        # If we already have data loaded, filter it by date range
+        if hasattr(self, 'data') and self.data:
+            for symbol in self.symbols:
+                if symbol in self.data:
+                    # Filter data by date range if provided
+                    if start_date is not None or end_date is not None:
+                        filtered_data = self.data[symbol]
+                        
+                        if start_date is not None:
+                            filtered_data = filtered_data[filtered_data.index >= start_date]
+                        
+                        if end_date is not None:
+                            filtered_data = filtered_data[filtered_data.index <= end_date]
+                        
+                        self.data[symbol] = filtered_data
+        
+        # Reset current index and bar
+        self.current_index = 0
+        self.current_bar = {}
+        self.current_datetime = None

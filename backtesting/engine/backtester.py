@@ -180,30 +180,18 @@ class Backtester:
         """
         logger.debug(f"Processing market event: {event}")
         
-        # Update the data handler's current bar and datetime
         try:
-            # Ensure data handler has the required properties
-            if not hasattr(self.data_handler, 'current_bar'):
-                self.data_handler.current_bar = {}
-                logger.debug("Initialized current_bar property in data handler")
-                
-            if not hasattr(self.data_handler, 'current_datetime'):
-                self.data_handler.current_datetime = event.timestamp
-                logger.debug("Initialized current_datetime property in data handler")
-                
-            # Update current bar with the event data
+            # Update the data handler's current bar and datetime
             self.data_handler.current_bar[event.symbol] = event.data
             self.data_handler.current_datetime = event.timestamp
-            logger.debug(f"Updated current_bar for {event.symbol} and current_datetime to {event.timestamp}")
-        
-        except Exception as e:
-            logger.error(f"Error updating data handler in market event: {e}")
-        
-        # Update the strategy with new market data
-        try:
+            
+            # Increment the current index to track position in the data
+            self.data_handler.current_index += 1
+            
+            # Update the strategy with new market data
             self.strategy.on_data(event)
         except Exception as e:
-            logger.error(f"Error updating strategy in market event: {e}")
+            logger.error(f"Error processing market event: {e}")
         
         # Update statistics
         self.stats['total_bars'] += 1
@@ -318,6 +306,10 @@ class Backtester:
         # Generate market events from the data handler
         self._generate_market_events()
         
+        # Log event count before running
+        total_events = self.event_loop.events.qsize()
+        logger.info(f"Generated {total_events} market events")
+        
         # Run the event loop
         self.event_loop.run()
         
@@ -333,25 +325,46 @@ class Backtester:
         logger.info(f"Placed {self.stats['orders_placed']} orders")
         logger.info(f"Filled {self.stats['orders_filled']} orders")
         
+        # Log results counts
+        equity_count = len(self.results['equity_curve']) if 'equity_curve' in self.results and self.results['equity_curve'] else 0
+        trades_count = len(self.results['trades']) if 'trades' in self.results and self.results['trades'] else 0
+        logger.info(f"Final equity curve entries: {equity_count}")
+        logger.info(f"Final trades count: {trades_count}")
+        
         return self.results
     
     def _generate_market_events(self):
         """Generate market events from the data handler."""
-        # Get all data from the data handler
-        data = self.data_handler.get_all_bars()
-        
-        # Create market events for each bar
-        for timestamp, bars in data.items():
-            for symbol, bar_data in bars.items():
-                # Create a market event
-                event = MarketEvent(
-                    timestamp=timestamp,
-                    symbol=symbol,
-                    data=bar_data
-                )
-                
-                # Add the event to the event loop
-                self.event_loop.add_event(event)
+        try:
+            # Get all data from the data handler
+            data = self.data_handler.get_all_bars()
+            
+            # Create market events for each bar
+            for timestamp, bars in data.items():
+                for symbol, bar_data in bars.items():
+                    # Create a market event
+                    event = MarketEvent(
+                        timestamp=timestamp,
+                        symbol=symbol,
+                        data=bar_data
+                    )
+                    
+                    # Add the event to the event loop
+                    self.event_loop.add_event(event)
+        except Exception as e:
+            logger.error(f"Error generating market events: {e}")
+            # Fallback to using the data property if get_all_bars fails
+            if hasattr(self.data_handler, 'data') and self.data_handler.data:
+                for symbol, data_df in self.data_handler.data.items():
+                    for timestamp, row in data_df.iterrows():
+                        event = MarketEvent(
+                            timestamp=timestamp,
+                            symbol=symbol,
+                            data=row.to_dict()
+                        )
+                        self.event_loop.add_event(event)
+            else:
+                logger.error("Could not generate market events from data handler.")
     
     def _calculate_results(self):
         """Calculate final performance metrics."""
