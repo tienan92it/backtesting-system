@@ -78,3 +78,6 @@ config.json
 # Other
 .cache
 .history 
+
+# Ignore all files in the ai_driven/generated directory
+ai_driven/generated/*
