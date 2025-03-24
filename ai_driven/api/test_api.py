@@ -68,6 +68,26 @@ def parse_args():
     
     return parser.parse_args()
 
+def format_metric(value, default=0):
+    """
+    Safely format a metric value, handling None values.
+    
+    Parameters:
+    -----------
+    value : any
+        The metric value to format
+    default : number
+        Default value to use if value is None
+        
+    Returns:
+    --------
+    str
+        Formatted metric value
+    """
+    if value is None:
+        return f"{default:.2f}"
+    return f"{value:.2f}"
+
 def main():
     """
     Test the API.
@@ -104,10 +124,16 @@ def main():
             metrics = result.get('metrics', {})
             if metrics:
                 print("\nPerformance Metrics:")
-                print(f"Total Return: {metrics.get('total_return', 0):.2f}%")
-                print(f"Sharpe Ratio: {metrics.get('sharpe_ratio', 0):.2f}")
-                print(f"Max Drawdown: {metrics.get('max_drawdown', 0):.2f}%")
-                print(f"Win Rate: {metrics.get('win_rate', 0):.2f}%")
+                # Safely format metrics
+                total_return = format_metric(metrics.get('total_return'))
+                sharpe_ratio = format_metric(metrics.get('sharpe_ratio'))
+                max_drawdown = format_metric(metrics.get('max_drawdown'))
+                win_rate = format_metric(metrics.get('win_rate'))
+                
+                print(f"Total Return: {total_return}%")
+                print(f"Sharpe Ratio: {sharpe_ratio}")
+                print(f"Max Drawdown: {max_drawdown}%")
+                print(f"Win Rate: {win_rate}%")
                 print(f"Total Trades: {metrics.get('total_trades', 0)}")
             
             # Save the HTML report
