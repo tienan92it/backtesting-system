@@ -19,6 +19,16 @@ the 200-day moving average, and sells when the 50-day moving average crosses bel
 the 200-day moving average. Use 2% of the portfolio for each trade.
 """
 
+# Debug strategy with detailed logging
+DEBUG_STRATEGY = """
+Create a moving average crossover strategy that:
+1. Buys when the 5-day moving average crosses above the 20-day moving average
+2. Sells when the 5-day moving average crosses below the 20-day moving average
+3. Uses 10% of the portfolio for each trade
+4. Logs detailed information at each step for debugging
+5. Print debugging info about current positions, signals and crosses
+"""
+
 # Default test configuration
 DEFAULT_CONFIG = {
     "symbol": "BTC/USDT",
@@ -40,6 +50,12 @@ def parse_args():
         type=str,
         default=DEFAULT_STRATEGY,
         help='Natural language strategy description'
+    )
+    
+    parser.add_argument(
+        '--debug-strategy',
+        action='store_true',
+        help='Use a debug strategy with detailed logging'
     )
     
     parser.add_argument(
@@ -85,6 +101,12 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--use-real-data',
+        action='store_true',
+        help='Use real market data instead of sample data'
+    )
+    
+    parser.add_argument(
         '--save-artifacts',
         action='store_true',
         default=True,
@@ -120,15 +142,19 @@ def main():
         "timeframe": args.timeframe,
         "commission": DEFAULT_CONFIG['commission'],
         "exchange": DEFAULT_CONFIG['exchange'],
-        "use_sample_data": args.use_sample_data
+        "use_sample_data": False if args.use_real_data else args.use_sample_data
     }
     
+    # Use debug strategy if requested
+    strategy_description = DEBUG_STRATEGY if args.debug_strategy else args.strategy
+    
     logger.info(f"Testing AI-driven backtesting workflow with config: {config}")
+    logger.info(f"Using {'REAL' if not config['use_sample_data'] else 'SAMPLE'} market data")
     
     try:
         # Run the workflow
         result, report_html = run_ai_backtest_workflow(
-            strategy_description=args.strategy,
+            strategy_description=strategy_description,
             backtest_config=config,
             save_artifacts=args.save_artifacts,
             artifacts_dir=args.artifacts_dir,
@@ -137,10 +163,26 @@ def main():
         
         # Print results summary
         logger.info("Backtest completed successfully!")
-        logger.info(f"Total Return: {result.metrics.get('total_return', 0):.2f}%")
-        logger.info(f"Sharpe Ratio: {result.metrics.get('sharpe_ratio', 0):.2f}")
-        logger.info(f"Max Drawdown: {result.metrics.get('max_drawdown', 0):.2f}%")
-        logger.info(f"Total Trades: {len(result.trades)}")
+        
+        if result.metrics:
+            logger.info(f"Total Return: {result.metrics.get('total_return', 0):.2f}%")
+            logger.info(f"Sharpe Ratio: {result.metrics.get('sharpe_ratio', 0):.2f}")
+            logger.info(f"Max Drawdown: {result.metrics.get('max_drawdown', 0):.2f}%")
+        else:
+            logger.warning("No metrics were calculated in the backtest result")
+            
+        if result.trades:
+            logger.info(f"Total Trades: {len(result.trades)}")
+            for i, trade in enumerate(result.trades[:5]):
+                logger.info(f"Trade {i+1}: {trade}")
+        else:
+            logger.warning("No trades were executed during the backtest")
+            
+        # Check equity curve
+        if result.equity_curve is not None and len(result.equity_curve) > 0:
+            logger.info(f"Equity curve has {len(result.equity_curve)} data points")
+        else:
+            logger.warning("Equity curve is empty")
         
         # Open report in browser if saved
         if args.save_artifacts:
@@ -150,15 +192,15 @@ def main():
             # Find the most recent report file
             report_files = sorted(glob.glob(f"{args.artifacts_dir}/report_*.html"))
             if report_files:
-                report_path = report_files[-1]
-                report_url = f"file://{os.path.abspath(report_path)}"
-                logger.info(f"Opening report in browser: {report_url}")
-                webbrowser.open(report_url)
+                latest_report = report_files[-1]
+                logger.info(f"Opening report: {latest_report}")
+                webbrowser.open(f"file://{os.path.abspath(latest_report)}")
+            else:
+                logger.warning("No report files found")
     
     except Exception as e:
-        logger.error(f"Workflow failed: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error running backtest workflow: {e}", exc_info=True)
+
 
 if __name__ == "__main__":
     main() 

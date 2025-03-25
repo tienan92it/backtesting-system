@@ -23,3 +23,6 @@ jinja2>=3.1.0
 
 # HTTP client for testing
 requests>=2.31.0
+
+# Streamlit UI
+streamlit>=1.43.0

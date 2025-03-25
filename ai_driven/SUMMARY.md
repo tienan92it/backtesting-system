@@ -13,7 +13,7 @@ The system uses a modular pipeline architecture with four primary components:
 3. **Backtest Runner** - Executes strategies against historical data and collects results
 4. **Report Builder** - Transforms results into visual reports with metrics and charts
 
-The components are coordinated by a **Workflow Orchestrator** that provides an end-to-end interface, and a **FastAPI Backend** that exposes the workflow via a REST API.
+The components are coordinated by a **Workflow Orchestrator** that provides an end-to-end interface, a **FastAPI Backend** that exposes the workflow via a REST API, and a **Streamlit UI** that provides a user-friendly interface.
 
 ## Module Structure
 
@@ -36,6 +36,10 @@ ai_driven/
 │   ├── models.py           # Pydantic models for API
 │   ├── run.py              # Script to run the API server
 │   └── test_api.py         # Script to test the API
+├── ui/                     # Streamlit UI module
+│   ├── __init__.py         # UI module exports
+│   ├── app.py              # Streamlit application
+│   └── run.py              # Script to run the Streamlit UI
 └── generated/              # Directory for storing generated artifacts
 ```
 
@@ -47,6 +51,7 @@ ai_driven/
 4. **Runner**: Executes the strategy code in the backtesting engine
 5. **Report Builder**: Converts the backtest results into an HTML report
 6. **API**: Exposes the workflow as a REST API for client applications
+7. **UI**: Provides a user-friendly web interface to access the API
 
 ## Integration with Core Backtesting Engine
 
@@ -72,6 +77,13 @@ The AI-driven system integrates with the core backtesting framework through:
 3. Results are returned as JSON with metrics and HTML report
 4. Client can display the HTML report or extract metrics for further processing
 
+### Web UI
+1. User enters a strategy description and configuration in the web interface
+2. UI sends a request to the API backend
+3. Progress is streamed to the UI as the backtest executes
+4. Results are displayed in an interactive dashboard with metrics and visualizations
+5. User can view detailed charts, trade logs, and the generated code
+
 ## Future Extensions
 
 The modular design allows for easy extension in several directions:
@@ -81,4 +93,5 @@ The modular design allows for easy extension in several directions:
 - Integration with alternative LLM providers
 - Real-time strategy execution against live market data
 - Advanced asynchronous processing for long-running backtests
-- User authentication and request rate limiting in the API 
+- User authentication and request rate limiting in the API
+- Comparison of multiple backtest strategies in the UI 
