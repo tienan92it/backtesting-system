@@ -1,2 +1,44 @@
 # Ignore .env file
 .env
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Local development
+*.log
+.DS_Store
+
+# Project specific
+ai_driven/generated/
+backtesting/data/cache/
+*.pkl
+*.csv
+*.json
+
+# Documentation
+docs/_build/
+
+__pycache__/
+*.py[cod]
+*$py.class

@@ -1,0 +1,80 @@
+# Binary and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.dylib
+*.dll
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+eggs/
+wheels/
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+ENV/
+
+# Testing and coverage
+.tox/
+.pytest_cache/
+.coverage
+coverage.xml
+*.cover
+htmlcov/
+
+# Development and IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+*.log
+
+# Project specific
+ai_driven/generated/
+backtesting/data/cache/
+*.pkl
+*.csv
+*.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentation
+docs/_build/
+site/
+_site/
+
+# Large data files and directories
+data/
+datasets/
+*.parquet
+*.feather
+*.h5
+*.hdf5
+
+# Temporary files
+tmp/
+temp/
+.temp/
+*.tmp
+*.bak
+*~
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Node modules (if any frontend components)
+node_modules/
+package-lock.json
+yarn.lock 
