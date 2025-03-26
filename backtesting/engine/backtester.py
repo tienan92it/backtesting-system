@@ -188,8 +188,9 @@ class Backtester:
             # Increment the current index to track position in the data
             self.data_handler.current_index += 1
             
-            # Update the strategy with new market data
-            self.strategy.on_data(event)
+            # Update the strategy's current index and call next()
+            self.strategy.current_index = self.data_handler.current_index - 1
+            self.strategy.next()
         except Exception as e:
             logger.error(f"Error processing market event: {e}")
         

@@ -1,14 +1,2 @@
-# Ignore all files in the ai_driven/generated directory
-ai_driven/generated/*
-
-# Ignore all files in the data directory
-data/*
-
-# Ignore all files in the example_data directory
-example_data/*
-
 # Ignore .env file
 .env
-
-# Ignore all files in the results directory
-results/*
